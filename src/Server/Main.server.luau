@@ -1,23 +1,38 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
 
-local Modules = ReplicatedStorage:WaitForChild("Modules")
-local Bridge = require(Modules:WaitForChild("Bridge"))
+local CharacterService = require(game.ServerScriptService.Services.CharacterService)
 
--- Example authority registration: server owns handling logic.
-Bridge:SetRateLimit("Movement", "Sprint", 10)
-Bridge:SetRateLimit("State", "*", 20)
+CharacterService.DebugMode = true
 
-Bridge:On("Movement", "Sprint", function(player, data)
-	print(("[Bridge] Sprint event from %s"):format(player.Name), data)
+-- Test: player joins + character lifecycle
+Players.PlayerAdded:Connect(function(player)
 
-	-- Round-trip test: echo confirmation back to the same client.
-	Bridge:Fire("State", "Snapshot", {
-		source = "Server",
-		received = "Movement/Sprint",
-		serverTime = os.clock(),
-	}, player)
+    print("[CharacterService TEST] Player joined:", player.Name)
+
+    CharacterService:OnCharacterAdded(player, function(data)
+        print("[CharacterService TEST] Character Added:", player.Name)
+
+        print("Character:", data.Character)
+        print("Humanoid:", CharacterService:GetHumanoid(player))
+        print("RootPart:", CharacterService:GetRootPart(player))
+    end)
+
+    CharacterService:OnCharacterRemoving(player, function(data)
+        print("[CharacterService TEST] Character Removing:", player.Name)
+    end)
 end)
 
-Bridge:On("State", "Update", function(player, data)
-	print(("[Bridge] State update from %s"):format(player.Name), data)
-end)
+-- Optional: test existing players in studio
+for _, player in ipairs(Players:GetPlayers()) do
+    task.spawn(function()
+        print("[CharacterService TEST] Existing player:", player.Name)
+
+        local char = CharacterService:GetCharacter(player)
+        local hum = CharacterService:GetHumanoid(player)
+        local root = CharacterService:GetRootPart(player)
+
+        print("Preloaded Character:", char)
+        print("Preloaded Humanoid:", hum)
+        print("Preloaded RootPart:", root)
+    end)
+end
